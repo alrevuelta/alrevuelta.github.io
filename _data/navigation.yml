@@ -13,10 +13,10 @@ main:
   #  url: /portfolio/
         
   - title: "Blog Posts"
-    url: /year-archive/
+    url: /
     
-  #- title: "CV"
-  #  url: /cv/
+  - title: "About"
+    url: /about/
     
   #- title: "Guide"
   #  url: /markdown/
