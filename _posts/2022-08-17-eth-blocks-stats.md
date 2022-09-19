@@ -54,7 +54,7 @@ Hereunder we model analytically the probability of a pool proposing at least `r`
 
 Starting from a slot perspective, each validator has the same probability of proposing the next block. This can be modeled as a binomial distribution [[4]](https://en.wikipedia.org/wiki/Binomial_distribution), where the probability of success `p` is:
 
-$p = \frac{1}{n\_active\_validators}$
+$p = \frac{1}{n\_{active\_validators}}$
 
 However, as we have explained, some entities control several thousands of validators. Let `v` be the number of validators that a given pool controls, we can calculate the probability of a given pool proposing a block in a slot as:
 
@@ -104,6 +104,7 @@ With 3 runs the probability of getting at least 2 heads is the sum of all indivi
 
 * `3` runs contain at least two heads HH
 * `5` runs do not contain two heads HH
+
 
 $ p_{success} = p^3 + p^2*(1-p) + p*(1-p)^2 $
 
@@ -244,11 +245,34 @@ As we can see, both the empirical and analytical results match, so we can valida
 * 225 epochs in a day:
 * 6750 epoch in a month.
 
-So a pool controlling 10% of the total stake has a probability of 0.258% of proposing 4 blocks in a row within an epoch. But if we look at this on a whole day, the probabilities of this happening increase 225-fold on average. Same for a month, being 6750-fold.
+So a pool controlling 10% of the total stake has a probability of 0.258% of proposing 4 blocks in a row within an epoch. But if we look at this for a whole day, the probabilities of this happening increase 225-fold on average. Same for a month, being 6750-fold.
 
-We will leave this analysis for another post, answering the question: How many epochs in a day/month will contain at least an `n`-consecutive block proposals of a pool controlling `p` of all validators?
+We will leave this analysis for another post, answering the question: How many epochs in a day/month will contain at least an `n`-consecutive block proposal of a pool controlling `p` of all validators?
+
+Coinbase Case Study
+---
+
+
+| <br>n-consecutive blocks/month ➡️ <br>pool share (sept-2022) ⬇️ | n=2 | n=3 | n=4 | n=5 | n=6 | n=7 |
+| --- | --- | --- | --- | --- | --- | --- |
+| 🥇 Coinbase (14.68 %) | 3051 | 531 | 76 | 11 | 1.80 | 0.14 |
+| 🥈 Kraken (8.76 %) | 1339 | 125 | 10 | 1.2 | 0.04 | 0 |
+| 🥉 Binance (5.16 %) | 511 | 25 | 1.3 | 0.06 | 0 | 0 |
+| BitcoinSuisse (2.15 %) | 93 | 1.7 | 0.06 | 0 | 0 | 0 |
+| Lido Blockscape (1.76 %) | 63 | 1.5 | 0 | 0 | 0 | 0 |
+| Stakedus (1.26 %) | 33 | 0.67 | 0 | 0 | 0 | 0 |
+| F2Pool (0.84 %) | 14 | 0.27 | 0 | 0 | 0 | 0 |
+| Bitfinex (0.77 %) | 12 | 0.20 | 0 | 0 | 0 | 0 |
+| Huobi (0.68 %) | 8 | 0.00 | 0 | 0 | 0 | 0 |
+| Bloxstaking (0.57 %) | 7 | 0.00 | 0 | 0 | 0 | 0 |
+
+
+<img src='/images/img_count.png'>
+
+<img src='/images/img_nproposals.png'>
 
 References:
+---
 
 [1] https://ethereum.org/en/developers/docs/mev/
 
@@ -259,3 +283,4 @@ References:
 [4] https://math.stackexchange.com/questions/417762/probability-of-20-consecutive-success-in-100-runs
 
 [5] An Introduction to Probability Theory and Its Applications, 3rd Edition, p. 325, equation 7.11
+
