@@ -1,25 +1,29 @@
 ---
-title: 'Statistical analysis on Ethereum n-consecutive block proposal probabilities'
+title: 'Statistical analysis on Ethereum k-consecutive block proposal probabilities and case study'
 date: 2022-08-14
 permalink: /posts/ethereum-mev-multiblock
 tags:
   - ethereum
 ---
 
-This article answers the following question: How likely is it that a given Ethereum staking pool controlling `p` of the stake proposes `r` consecutive blocks in an epoch. After The Merge, this is of paramount importance since it opens up a new dimension for MEV[[1]](https://ethereum.org/en/developers/docs/mev/).
+This article answers the following question: How likely is it that a given Ethereum staking pool controlling `p` of the stake proposes `k` consecutive blocks within an epoch.
 
-Introduction
+After *The Merge* (transition from Proof of Work to Proof of Stake ), this is of paramount importance since it opens up a new dimension for *Maximal Extractable Value*[[1]](https://ethereum.org/en/developers/docs/mev/).
+
+To begin with, these probabilities are analytically modeled and then validated through Montecarlo simulations. To conclude, on-chain data is used to study n-consecutive block proposals for Coinbase, a well-known entity in the Ethereum consensus layer.
+
+1 Introduction
 ---
 
 Ethereum is a [byzantine fault tolerant](https://en.wikipedia.org/wiki/Byzantine_fault) public distributed database (a.k.a. blockchain) that is made out of thousands of nodes storing its information, making it one of the most resilient systems invented so far. Technically, it can store arbitrary information but the main use case in the last few years has been related to finance, where the blockchain is used as a ledger, storing account balances.
 
-Miners (or validators, as they will be called after September 2022 once Ethereum migrates from Proof of Work to Proof of Stake) are responsible for updating the database, taking turns at a constant peace of 12 seconds, creating new blocks aggregating multiple valid transactions and appending them to the blockchain. They collect a fee in return, that incentivizes them to behave properly and include as many transactions as possible.
+Miners (or validators, as they will be called after September 2022 once Ethereum migrates from Proof of Work to Proof of Stake) are responsible for updating the database, taking turns at a constant peace of 12 seconds, creating new blocks aggregating multiple valid transactions and appending them to the blockchain. They collect a fee in return, which incentivizes them to behave properly and include as many transactions as possible.
 
 Needless to say, miners/validators have not only a great responsibility in the network, but a lot of power as well, since ultimately they are the ones modifying the distributed ledger. This ability to modify it can be (and is) leveraged by them to extract monetary value, the so-called MEV.
 
-However, the soon-to-happen transition from Proof of Work to Proof of Stake, will introduce new ways of extracting MEV, like multi-block MEV, where a given entity controlling `p` share of the network stake will propose `r` consecutive blocks with a given probability. This article models these probabilities both analytically and empirically.
+However, the soon-to-happen transition from Proof of Work to Proof of Stake, will introduce new ways of extracting MEV, like multi-block MEV, where a given entity controlling `p` share of the network stake will propose `k` consecutive blocks with a given probability. This article models these probabilities both analytically and empirically.
 
-Ethash vs RANDAO
+2 Ethash vs RANDAO
 ---
 
 Before diving into the modeling, you may ask. Why isn't multiblock MEV possible in PoW but is in PoS? Well, it's because of the algorithm that selects who proposes the next block. Let's see the differences:
@@ -30,15 +34,15 @@ Before diving into the modeling, you may ask. Why isn't multiblock MEV possible 
 
 The key here is that *RANDAO* is updated just once per epoch (32 slots of 12 seconds) so in PoS anyone can know who is going to propose the next 32 blocks. Knowing this allows for multi-block MEV, something that is not possible in PoW.
 
-Intro to MEV
+3 Intro to MEV
 ---
 
-MEV stands for Maximal Extractable Value. It refers to the value that can be extracted by **including**, **excluding**, or **changing** the order of the transactions within a block. Since the miners/validators are the ones creating the blocks and appending them to the ledger, they have this power. Note that changing the order or excluding transactions in the block they propose is not against the protocol rules, so MEV can be extracted without acting maliciously (ethics aside).
+MEV stands for *Maximal Extractable Value*. It refers to the value that can be extracted by **including**, **excluding**, or **changing** the order of the transactions within a block. Since the miners/validators are the ones creating the blocks and appending them to the ledger, they have this power. Note that changing the order or excluding transactions in the block they propose is not against the protocol rules, so MEV can be extracted without acting maliciously (ethics aside).
 Some ways of MEV:
 * **frontrunning**: Let's say that you have detected an arbitrage opportunity between two DEX, and try to benefit from that. You create a transaction and send it to the mempool. Well, the miner/validator creating the next block will see your transaction, and will most likely include their transaction first, so that when you arrive, the arbitrage opportunity no longer exists because someone else has already benefited from it.
 * **sandwiching**: Are you buying a high amount of Eth? Well, that will push the price up a bit. If someone sees this transaction in the mempool, it will place a transaction before you buying Eth, then yours and then one selling.
 
-Etheruem Pools and Validators
+4 Etheruem Pools and Validators
 ---
 
 At the time of writing, Ethereum's consensus layer is made out of more than 415.000[[3]](https://www.beaconcha.in) validators. In each slot (every 12 seconds) a validator is randomly chosen to propose the block in that slot. An epoch contains 32 slots, so a given validator "rolls the dice" 32 times per epoch to propose a block.
@@ -47,12 +51,12 @@ With that high number of validators, you may think that it won't be very likely 
 
 However, not all validators belong to completely uncorrelated entities. Some pools or operators control several hundred or even thousands of validators, so we must calculate the probabilities on a pool/operator level, not on a validator level. A pool controlling 10% of the stake, or 40k+ validators, the probability that it proposes 2 or even 3 blocks in a row is not neglectable. This is exactly what we are quantifying.
 
-Analytical Analysis
+5 Analytical Analysis
 ---
 
-Hereunder we model analytically the probability of a pool proposing at least `r` blocks in a row within an epoch controlling `p` of the total validators.
+Hereunder we model analytically the probability of a pool proposing `k` blocks in a row within an epoch controlling `p` of the total validators.
 
-Starting from a slot perspective, each validator has the same probability of proposing the next block. This can be modeled as a binomial distribution [[4]](https://en.wikipedia.org/wiki/Binomial_distribution), where the probability of success `p` is:
+In each slot, each validator has the same probability of proposing the block. This can be modeled as a binomial distribution [[4]](https://en.wikipedia.org/wiki/Binomial_distribution), where the probability of success `p` is:
 
 $p = \frac{1}{n\_{active\_validators}}$
 
@@ -60,53 +64,15 @@ However, as we have explained, some entities control several thousands of valida
 
 $p = \frac{1}{n\_active\_validators} * v$
 
-But we are interested in the probability of the pool proposing **at least** `r` **consecutive** blocks in a **whole epoch**, which is not trivial.
+But we are interested in the probability of the pool proposing `k` **consecutive** blocks in a **whole epoch**, which is not trivial.
 
 If we didn't care that the blocks were consecutive, we could use the following expression to calculate the probability of getting exactly `k` successes in `n` independent trials with `p` probability of success. But it's **not** what we want.
 
 $ \binom{n}{k}  p^k(1-p)^{n-k}$
 
-Leaving Ethereum particularities aside, we can model this problem as the chances of getting at least `k` heads when flipping a biased coin `n` times with a probability of head of `p`.
+Leaving Ethereum particularities aside, we can model this problem as the chances of getting `k` consecutive heads when flipping a biased coin `n=32` times with a probability of a head of `p`.
 
-We can calculate this probability by adding the individual success probabilities of all possible events. Let's see some examples where we want to get at least two heads HH (`k=2`) in `n=1,2,3,...` realizations. In our case:
-* heads map to a block proposal duty
-* the number of realizations is the slots per epoch =32.
-
-**k=2 n=1**
-
-Out of 1 run, the possibilities of getting 2 heads is 0, since there are no successes in the sample space:
-* `0` run contains at least two heads HH
-* `2` runs do not contain two heads HH
-
-The probability of each event is shown on the right:
-
-```
-H -> p
-T -> (1-p)
-```
-
-**k=2 n=2**
-
-Out of 2 runs, there is a $ p^2$ probability that we will get two heads:
-* `1` run contains at least two heads HH
-* `3` runs do not contain two heads HH
-
-```
-HH -> p^2      ->sucess
-HT -> p*(1-p)
-TH -> p*(1-p)
-TT -> (1-p)^2
-```
-
-**k=2 n=3**
-
-With 3 runs the probability of getting at least 2 heads is the sum of all individual probabilities. As we can see, not all success cases have the same probability.
-
-* `3` runs contain at least two heads HH
-* `5` runs do not contain two heads HH
-
-
-$ p_{success} = p^3 + p^2*(1-p) + p*(1-p)^2 $
+For the sake of simplicity, let's imagine that we want to study the probability of having `k=2` (two consecutive heads `HH`) in `n=3` (three trials). In this case, there are only $ 2^3 = 8 $ different outcomes, where 3 contains our `HH` sequence (success) and 5 doesn't.
 
 ```
 HHH -> p^3        ->sucess
@@ -119,33 +85,21 @@ THT -> p*(1-p)^2
 TTT -> (1-p)^3
 ```
 
-Note that in all cases the sum of all individual probabilities for each event equals to one, where $ p_i $ is the individual probability of success of $i$ event.
+So we can calculate the probability of success by adding all individual outcomes that contain HH:
+
+$ p_{success} = p^3 + p^2*(1-p) + p*(1-p)^2 $
+
+Let $ p_i $ be the individual probability of the $i$-th event, the sum of all individual probabilities is one:
 
 $ \sum_{n=0}^{2^k}p_i = 1 $
 
-Same for 4 and 5 realizations. Not showing all the combinations for practical reasons.
+This simplification with 3 realizations instead of 32 gave us an intuition of the problem but in our case, we have $ 2^{32} = 4,294,967,296 $ individual probabilities and adding all the success cases is not something we can do manually.
 
-**k=2 n=4**
+Luckily, [[4]](https://leancrew.com/all-this/2009/06/stochasticity/) noticed that the number of successes for having **at least** `k` consecutive heads in `n` trials for an unbiased coin `p=0.5` can be calculated as:
 
-* `8` runs contain at least two heads HH
-* `8` runs do not contain two heads HH
+$ n_{successes} = 2^n-F_{n+2}^{(k)} $
 
-**k=2 n=5**
-* `19` runs contain at least two heads HH
-* `13` runs do not contain two heads HH
-
-If we pay attention, we can see how the number of runs with no success follows a pattern:
-
-$ 2, 3, 5, 8, 13 $
-
-This is the Fibonacci series, skipping the first two initial numbers $1, 1$.
-
-
-But what if `k` is different? Well:
-* `k=3` the runs with no success follow the [tribonacci](http://mathworld.wolfram.com/TribonacciNumber.html) sequence: $2, 4, 7, 13, 24, 44$
-* `k=4` we get the [tetranacci](http://mathworld.wolfram.com/TetranacciNumber.html) sequence: $ 2, 4, 8, 15, 29, 56 $
-
-It's possible to generalize this for an **unbiassed** coin (`p=0.5`) with the following expressions:
+Where $ F_{n+2}^{(k)} $ is the $ (n+2)^{th} $ [Fibonacci k-step number](http://mathworld.wolfram.com/Fibonaccin-StepNumber.html). So it can be generalized as:
 
 $ p_{nosuccess} = \frac{F_{n+2}^{(k)}}{2^n} $ 
 
@@ -156,23 +110,23 @@ For example, the probability of getting at least 7 runs with heads using an unbi
 $ \frac{2^{100} - F_{102}^{(7)}}{2^{100}} = 0.318 $
 
 However, we can't use this since:
-* We can't model our problem as an unbiased coin, since our probability of success depends on the % of the validator the pool controls.
-* With 32 runs, which represents 1 epoch, there are $2^{32}$ combinations of outcomes, where each one has its probability. Calculating all of them would be too much.
+* We can't model our problem as an unbiased coin, since our probability of success depends on the % of the validator the pool controls. In other words `p!=0.5`.
+* It calculates the probability of having **at least** `k` consecutive proposals, but we are interested in the changes of **exactly** `k` proposals.
 
 Luckily, Feller came up with an approximation [5] that allows us to calculate the probability of no success:
 
 $ q_n \approx \frac{1-px}{(r+1-rx)q}  \frac{1}{x^{n+1}}$
 
 Where:
-* `r` consecutive events (in our case the consecutive blocks)
-* `n` trial (in our case 32 slots)
+* `r` consecutive events (`k` in our case, the consecutive blocks)
+* `n` trial (`n=32` in our case)
 * `p` probability of success (in our case the share of validators of the pool)
 * `q=1-p`
 * `x` is the closest real root to one calculated as follows.
 
 $ 1 -x+qp^rx^{r+1} = 0  $
 
-We can write this expression in Python solving for `x` and then for `q_n`. With this, we get that the probability of a pool controlling 30% of all validators proposing at least 2 consecutive blocks in an epoch is 90.71 %.
+We can write this expression in Python solving for `x` and then for `q_n`. With this, we get that the probability of a pool controlling 30% of all validators `p=0.3` proposing 2 consecutive blocks `k=2` in an epoch is 90.71 %.
 
 ```python
 from sympy import *
@@ -187,13 +141,12 @@ print("Probability of no success:", qn*100, "%")  #  9.28 %
 print("Probability of success:", (1-qn)*100, "%") # 90.71 %
 ```
 
-Montecarlo Simulations
+6 Montecarlo Simulations
 ---
 
 In order to validate that our analytical probabilities are correct, we run a Monte Carlo simulation. By repeated random sampling (simulating hundreds of thousands of epochs) we can calculate the probabilities of each event empirically, and then compare it against the analytical results.
 
 With a simple Python script, we can estimate the probability of a pool controlling 30% of the stake `p=0.3` proposing at least 2 blocks in a row `r=2`, which is 90.865 %, a number quite close to the analytical one.
-
 
 ```python
 from numpy import random
@@ -202,7 +155,7 @@ from itertools import groupby
 def max_consecutive_ones(l):
     return max(([sum(g) for i, g in groupby(l) if i == 1]), default=0)
 
-num_trials = 100000
+num_trials = 500000
 r = 2; n = 32; p = 0.3
 
 epoch_proposals = [random.binomial(1, p, size=n) for i in range(num_trials)]
@@ -212,14 +165,14 @@ print("Probability of success:", num_of_n_consec_proposals/num_trials * 100, "%"
 # 90.865 %
 ```
 
-Conclussions And Results
+7 Conclusions And Results
 ---
 
-Using the scripts above, we calculate the probabilities of proposing at least `n` consecutive blocks for a pool controlling `p` of the validators (over one). Note that the probabilities are displayed in percentage, so a pool controlling 10% of the validators will have a chance of 0.2617% of proposing at least 4 blocks in a row.
+Using the scripts above, we calculate the probabilities of proposing `k` consecutive blocks for a pool controlling `p` of the validators (over one). Note that the probabilities are displayed in percentage, so a pool controlling 10% of the validators will have a chance of 0.2617% of proposing at least 4 blocks in a row.
 
 Analytical probabilities in % (using Feller's estimation)
 
-|        | n=2     | n=3     | n=4       | n=5       |
+|        | k=2     | k=3     | k=4       | k=5       |
 |--------|---------|---------|-----------|-----------|
 | p=0.01 | 0.3066  | 0.0029  | 2.8719e-5 | 2.7729e-7 |
 | p=0.05 | 7.1490  | 0.3563  | 0.0172    | 0.0008    |
@@ -231,7 +184,7 @@ Analytical probabilities in % (using Feller's estimation)
 
 Montecarlo probabilities in % (with 100000 runs per tuple)
 
-|        | n=2    | n=3    | n=4    | n=5    |
+|        | k=2    | k=3    | k=4    | k=5    |
 |--------|--------|--------|--------|--------|
 | p=0.01 | 0.315  | 0.003  | 0.001  | 0.0    |
 | p=0.05 | 7.063  | 0.335  | 0.030  | 0.0    |
@@ -241,19 +194,33 @@ Montecarlo probabilities in % (with 100000 runs per tuple)
 | p=0.4  | 98.470 | 74.514 | 38.726 | 16.622 |
 | p=0.5  | 99.868 | 92.240 | 66.548 | 38.872 |
 
-As we can see, both the empirical and analytical results match, so we can validate that our simulations are correct. We can also see that for a pool controlling >10% of the total validators, the probability of proposing 2, 3 or even 4 blocks is not neglectable. Note that one epoch has a duration of 12*32 seconds so there are:
+As we can see, both the empirical and analytical results match, so we can validate that our simulations are correct. We can also see that for a pool controlling >10% of the total validators, the probability of proposing 2, 3 or even 4 blocks is not neglectable.
+
+
+Note that one epoch has a duration of 12*32 seconds so there are:
 * 225 epochs in a day:
 * 6750 epoch in a month.
 
-So a pool controlling 10% of the total stake has a probability of 0.258% of proposing 4 blocks in a row within an epoch. But if we look at this for a whole day, the probabilities of this happening increase 225-fold on average. Same for a month, being 6750-fold.
+So we can calculate the number of `k` consecutive blocks per day/month that a pool controlling `p` share of the network will propose. We just need to multiply the probability by 225 for the former or 6750 for the latter.
 
-We will leave this analysis for another post, answering the question: How many epochs in a day/month will contain at least an `n`-consecutive block proposal of a pool controlling `p` of all validators?
+So a pool/operator controlling 10% of the total validators `p=0.1` will propose 4 blocks in a row `k=4` with a chance of 0.258% (see table). It will also propose:
+* $ \frac{0.256}{100} * 225 = 0.58 $ `4`-consecutive blocks a day.
+* $ \frac{0.256}{100} * 6759 = 17.4 $ `4`-consecutive blocks a month.
 
-Coinbase Case Study
----
 
+Once the theory behind is clear, we can apply it to reality. To do so, we just need to know `p` (% of validators that a given entity controls). However, it's not trivial to estimate this number.
 
-| <br>n-consecutive blocks/month ➡️ <br>pool share (sept-2022) ⬇️ | n=2 | n=3 | n=4 | n=5 | n=6 | n=7 |
+All validators that the Ethereum network contains, are the result of depositing 32 Eth to the [Ethereum deposit contract](https://etherscan.io/address/0x00000000219ab540356cbb839cbe05303d7705fa), meaning that every single validator of the 420000+ has done this deposit, with a receipt we can find onchain.
+
+If we know who controls the `from` address that was used for the 32 Eth deposit, we know who controls the validator.
+
+If an entity has done multiple deposits, we can label all validators they control, so we will know who may benefit from the multi-block MEV studied in this post.
+
+The following table shows the `k` consecutive blocks that each pool/operator will propose per month. Code can be found in [[10]](/files/post_n_block_stats/nblock_probabilities.py) and the percentages are taken crossing data from ethereumpools.info[[11]](ethereumpools.info), rated.network[[12]](rated.network), beaconcha.in[[13]](beaconcha.in) and etherscan.io[[14]](etherscan.io).
+
+For example, assuming that Coinbase controls 14.68% of all validators, it's expected that they will propose 5 blocks in a row 11 times a month.
+
+| <br>k-consecutive blocks/month ➡️ <br>pool share (sept-2022) ⬇️ | k=2 | k=3 | k=4 | k=5 | k=6 | k=7 |
 | --- | --- | --- | --- | --- | --- | --- |
 | 🥇 Coinbase (14.68 %) | 3051 | 531 | 76 | 11 | 1.80 | 0.14 |
 | 🥈 Kraken (8.76 %) | 1339 | 125 | 10 | 1.2 | 0.04 | 0 |
@@ -267,9 +234,39 @@ Coinbase Case Study
 | Bloxstaking (0.57 %) | 7 | 0.00 | 0 | 0 | 0 | 0 |
 
 
-<img src='/images/img_count.png'>
+**Disclaimer**: These percentages represent just an estimation crossing data from multiple sources and with on-chain analytics. Some operators like Lido Blockscape publicly recognize their validators, but it's not always the case. Some % may we wrong.
 
-<img src='/images/img_nproposals.png'>
+
+8 Case Study
+---
+
+Along the post, we have calculated the probabilities of proposing `k` blocks in a row for a pool/operator controlling `p` of all validators. But, can we empirically verify in the beacon chain that our numbers match?
+
+Hereunder we analyze Coinbase block proposals during August 2022, using data directly taken from the beacon chain, and count the number of `k` consecutive block proposals `k=2...7` that took place.
+
+Note that this analysis is done *ex post*, meaning that we have taken the blocks that Coinbase proposed, not the ones they should have proposed (aka duties).
+
+For traceability, we used this query[[15]](/files/post_n_block_stats/coinbase_validators_query.sql) in Dune[[16]](dune.com/) to get the validators[[17]](/files/post_n_block_stats/coinbase_validators_sept2022.csv)
+ that **we estimate** Coinbase controls. The query scans all deposits looking for a recurrent pattern that is believed to identify Coinbase validators. 32ish Eth are moved to new address, then the deposit is performed and the leftovers are sent back to a [Coinbase Misc](https://etherscan.io/address/0xa090e606e30bd747d4e6245a1517ebe430f0057e). In September 2022, we have detected a total of 62351 deposited with this method.
+
+Filtering all blocks, [here]](/files/post_n_block_stats/coinbase_blocks_sept2022.csv) are the blocks (slot + index) that Coinbase proposed.
+
+
+Here we can see the k-consecutive proposals for Coinbase during August 2022. In the first figure we can see the frequency of `k`-consecutive proposals over time (not that slots map 1:1 to a given timestamp). In the second figure we can see the count of each `k`-consecutive proposal.
+
+<img src='/images/coinbase_multiblock_september.png'>
+
+As we can see, over this month Coinbase proposed 7 blocks in a row starting in slot `4415632` and ending in `4415638`, both belonging to epoch `137988`, that started Aug-06-2022 06:43:35 PM UTC.
+
+All slots [4415632](https://beaconcha.in/slot/4415632), [4415633](https://beaconcha.in/slot/4415633), [4415634](https://beaconcha.in/slot/4415634), [4415635](https://beaconcha.in/slot/4415635), [4415636](https://beaconcha.in/slot/4415636), [4415637](https://beaconcha.in/slot/4415637), [4415638](https://beaconcha.in/slot/4415638), where proposed respectively by validators [186206](https://beaconcha.in/validator/186206), [392916](https://beaconcha.in/validator/392916), [276875](https://beaconcha.in/validator/276875), [234842](https://beaconcha.in/validator/234842), [227147](https://beaconcha.in/validator/227147), [302780](https://beaconcha.in/validator/302780), [134031](https://beaconcha.in/validator/134031), which with the above explained methodology, can be labeled as part of Coinbase.
+
+Now that we have the empirical data, we can compare with the Montecarlo simulations and analytical results from the previous section. We can observe some minor differences, that may be due to lack of enough realizations, and should converge to the theoretical results when we increase the timespan, i.e. 6 or 12 months.
+
+| 🥇 Coinbase (14.68 %)   | k=2 | k=3 | k=4 | k=5 | k=6 | k=7 |
+| --- | --- | --- | --- | --- | --- | --- |
+| Theoretical monthly proposals | 3051 | 531 | 76 | 11 | 1.80 | 0.14 |
+| Empirical monthly proposals | 3498 | 488 | 81 | 9 | 1 | 1 |
+
 
 References:
 ---
